@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Master Roadmap | Learn AI Anywhere</title>
-    <meta name="description" content="A comprehensive guide to mastering Large Language Models from foundations to production scaling.">
+    <meta name="description"
+        content="A comprehensive guide to mastering Large Language Models from foundations to production scaling.">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="app-container">
         <aside>
             <h1>LLM Master</h1>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2rem;">Master the future of AI</p>
-            
+
             <nav>
                 <ul class="nav-links">
                     <li><a href="#" class="nav-link active" data-module="roadmap">YouTube Roadmap</a></li>
@@ -25,13 +28,24 @@
             </nav>
 
             <div style="position: absolute; bottom: 2rem; left: 2rem; right: 2rem;">
-                <div style="background: var(--glass); padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
-                    <p style="font-size: 0.75rem; color: var(--text-secondary);">Your progress is saved locally in this browser.</p>
+                <div
+                    style="background: var(--glass); padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                    <p style="font-size: 0.75rem; color: var(--text-secondary);">Your progress is saved locally in this
+                        browser.</p>
                 </div>
             </div>
         </aside>
 
         <main>
+            <div class="top-bar">
+                <div style="font-weight: 600;">Overall Progress</div>
+                <div class="overall-progress">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div id="progress-percent" style="font-size: 0.8rem; width: 40px;">0%</div>
+                <button id="theme-btn" class="theme-toggle">🌙 Light Mode</button>
+            </div>
+
             <header>
                 <h1>Curated LLM Roadmap</h1>
                 <p class="subtitle">From mathematical foundations to large-scale deployment and research.</p>
@@ -46,4 +60,5 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>
