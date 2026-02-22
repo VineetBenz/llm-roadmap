@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State
     let currentModule = 'roadmap';
-    let progress = JSON.parse(localStorage.getItem('llm_progress') || '{}');
-    let notes = JSON.parse(localStorage.getItem('llm_notes') || '{}');
+    let progress = JSON.parse(localStorage.getItem('llm_progress') || {});
+    let notes = JSON.parse(localStorage.getItem('llm_notes') || {});
     let currentTheme = localStorage.getItem('llm_theme') || 'dark';
 
     // Theme Logic
@@ -31,17 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
         updateProgressBar();
     }
 
-    function saveNotes() {
-        localStorage.setItem('llm_notes', JSON.stringify(notes));
-    }
-
     function updateProgressBar() {
         const totalItems = Object.keys(ROADMAP_DATA).reduce((sum, key) => sum + ROADMAP_DATA[key].length, 0);
         const completedItems = Object.values(progress).filter(Boolean).length;
         const percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
-        progressFill.style.width = `${percentage}%`;
-        progressPercent.innerText = `${percentage}%`;
+        progressFill.style.width = percentage + '%';
+        progressPercent.innerText = percentage + '%';
     }
 
     window.toggleProgress = (id) => {
@@ -57,12 +53,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.updateNote = (id, text) => {
         notes[id] = text;
-        saveNotes();
+        localStorage.setItem('llm_notes', JSON.stringify(notes));
     };
 
     window.showQuiz = (topic) => {
-        alert(`Quiz for ${topic}:\n\n1. What is the core intuition behind this?\n2. Can you explain the main formula?\n3. How does this connect to the previous stage?\n\n(Feature: Randomized active recall questions coming soon!)`);
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--card-bg); border: 2px solid var(--accent); padding: 2rem;
+            border-radius: 16px; z-index: 1000; max-width: 500px; width: 90%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        `;
+
+        const quizContent = getQuizContent(topic);
+
+        modal.innerHTML = `
+            <h2 style="margin-bottom: 1rem;">Active Recall: ${topic}</h2>
+            <div style="margin-bottom: 1.5rem; color: var(--text-secondary); line-height: 1.6;">
+                ${quizContent}
+            </div>
+            <button class="btn btn-primary" onclick="this.parentElement.remove()">Got it!</button>
+        `;
+        document.body.appendChild(modal);
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 999;
+        `;
+        overlay.onclick = () => { modal.remove(); overlay.remove(); };
+        document.body.appendChild(overlay);
     };
+
+    function getQuizContent(topic) {
+        const quizzes = {
+            "Linear Algebra": "1. What is a Basis? <br>2. How do you interpret Matrix Multiplication geometrically?<br>3. What do Eigenvalues represent in a transformation?",
+            "Self-Attention Mechanism": "1. Why do we scale the dot product by √d_k?<br>2. Difference between Softmax(QK^T) and masked attention?<br>3. Why are Q, K, and V necessary instead of just one matrix?",
+            "Llama": "1. What is RoPE (Rotary Positional Embeddings)?<br>2. Difference between Pre-Norm and Post-Norm?<br>3. How does SwiGLU improve performance over ReLU?",
+            "Backprop": "1. State the Multivariable Chain Rule.<br>2. Why does vanishing gradient happen in deep networks?<br>3. How does Batch Normalization mitigate gradient issues?"
+        };
+        return quizzes[topic] || "1. Explain this concept in your own words.<br>2. How would you implement this from scratch?<br>3. What is the biggest limitation of this approach?";
+    }
 
     function render() {
         mainContent.innerHTML = '';
@@ -71,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentModule === 'roadmap') renderRoadmap(data);
         else if (currentModule === 'planner') renderPlanner(data);
         else if (currentModule === 'papers') renderPapers(data);
-        else renderGeneric(data);
+        else renderCategorized(data);
 
         updateProgressBar();
     }
@@ -86,68 +117,101 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.keys(stages).forEach(stageName => {
             const section = document.createElement('div');
             section.className = 'stage-section';
-            section.innerHTML = `
-                <div class="stage-title"><h2>${stageName}</h2></div>
-                <div class="grid">
-                    ${stages[stageName].map((item, index) => {
-                const id = `roadmap-${stageName}-${index}`.replace(/\s+/g, '-');
-                return createCard(item, id, item.Topic, item['Specific Video / Playlist'], item.Goal, item['Direct Link (Searchable)'], 'Watch');
-            }).join('')}
-                </div>
-            `;
+            section.innerHTML = `<div class="stage-title"><h2>${stageName}</h2></div><div class="grid"></div>`;
+            const grid = section.querySelector('.grid');
+
+            stages[stageName].forEach((item, idx) => {
+                const id = `roadmap-${stageName}-${idx}`.replace(/\s+/g, '-');
+                grid.innerHTML += createCard({
+                    tag: item.Topic,
+                    title: item.Deliverable,
+                    desc: item.Goal,
+                    links: [
+                        { text: 'Watch', url: item.Link, primary: true },
+                        { text: '💻 Code', url: item.Implementation, title: 'Implementation' }
+                    ],
+                    id
+                });
+            });
             mainContent.appendChild(section);
         });
     }
 
-    function createCard(item, id, tag, title, desc, link, linkText) {
-        const isChecked = progress[id];
-        const noteText = notes[id] || '';
-        const isPaper = currentModule === 'papers';
-
-        // Build Arxiv Link for papers
-        let extraLink = '';
-        if (isPaper) {
-            const query = encodeURIComponent(title || item.Paper);
-            extraLink = `<a href="https://arxiv.org/search/?query=${query}&searchtype=all" target="_blank" class="btn-icon" title="View on ArXiv">📄</a>`;
-        } else {
-            // Add a code link placeholder for roadmap items
-            extraLink = `<a href="https://github.com/search?q=${encodeURIComponent(title)}+implementation" target="_blank" class="btn-icon" title="View Code">💻</a>`;
-        }
-
-        return `
-            <div class="card stagger-fade">
-                <span class="card-tag">${tag}</span>
-                <h3 class="card-title">${title || tag}</h3>
-                <p class="card-desc">${desc || ''}</p>
-                <div class="card-actions">
-                    <a href="${link}" target="_blank" class="btn btn-primary" style="flex:1; text-align:center;">${linkText}</a>
-                    ${extraLink}
-                    <button class="btn-icon" onclick="toggleNote('${id}')" title="Take Notes">📝</button>
-                    <button class="btn-icon" onclick="showQuiz('${title || tag}')" title="Self Quiz">💡</button>
-                    <div class="progress-checkbox ${isChecked ? 'checked' : ''}" onclick="toggleProgress('${id}')"></div>
-                </div>
-                <textarea id="note-${id}" class="note-area ${noteText ? 'visible' : ''}" placeholder="Type your learning notes here..." oninput="updateNote('${id}', this.value)">${noteText}</textarea>
-            </div>
-        `;
+    function renderPapers(data) {
+        mainContent.innerHTML = `<div class="grid"></div>`;
+        const grid = mainContent.querySelector('.grid');
+        data.forEach((item, idx) => {
+            const id = `paper-${idx}`;
+            grid.innerHTML += createCard({
+                tag: item.Category,
+                title: item.Title,
+                desc: `${item.Author} (${item.Year}) - ${item.Goal}`,
+                links: [
+                    { text: 'Scholar', url: item.Link, primary: true },
+                    { text: '📄 PDF', url: `https://arxiv.org/pdf/${item.Link.split('/').pop()}`, title: 'Download PDF' }
+                ],
+                id
+            });
+        });
     }
 
     function renderPlanner(data) {
-        mainContent.innerHTML = `<h2>Study Planner</h2><div class="grid">` +
-            data.map((item, index) => createCard(item, `planner-${index}`, item.Week, item.Topic, item.Focus, '#', 'View Plan')).join('') + `</div>`;
+        mainContent.innerHTML = `<div class="grid"></div>`;
+        const grid = mainContent.querySelector('.grid');
+        data.forEach((item, idx) => {
+            grid.innerHTML += createCard({
+                tag: item.Week,
+                title: item.Topic,
+                desc: item.Focus,
+                links: [
+                    { text: 'Plan', url: item.Action, primary: true }
+                ],
+                id: `planner-${idx}`
+            });
+        });
     }
 
-    function renderPapers(data) {
-        mainContent.innerHTML = `<h2>100 Paper Tracker</h2><div class="grid">` +
-            data.map((item, index) => {
-                const title = item.Title || item.Paper;
-                const query = encodeURIComponent(title);
-                return createCard(item, `paper-${index}`, item.Category || 'Research', title, item.Author, `https://scholar.google.com/scholar?q=${query}`, 'Scholar');
-            }).join('') + `</div>`;
+    function renderCategorized(data) {
+        mainContent.innerHTML = `<div class="grid"></div>`;
+        const grid = mainContent.querySelector('.grid');
+        data.forEach((item, idx) => {
+            const keys = Object.keys(item);
+            grid.innerHTML += createCard({
+                tag: item[keys[0]],
+                title: item[keys[1]],
+                desc: item[keys[2]] || '',
+                links: item[keys[3]] ? [{ text: 'View', url: item[keys[3]], primary: true }] : [],
+                id: `gen-${currentModule}-${idx}`
+            });
+        });
     }
 
-    function renderGeneric(data) {
-        mainContent.innerHTML = `<div class="grid">` +
-            data.map((item, index) => createCard(item, `generic-${currentModule}-${index}`, Object.values(item)[0], Object.values(item)[0], Object.values(item)[1], '#', 'Action')).join('') + `</div>`;
+    function createCard(opts) {
+        const isChecked = progress[opts.id];
+        const noteText = notes[opts.id] || '';
+
+        let linksHtml = opts.links.map(l =>
+            l.primary ?
+                `<a href="${l.url}" target="_blank" class="btn btn-primary" style="flex:1; text-align:center;">${l.text}</a>` :
+                `<a href="${l.url}" target="_blank" class="btn-icon" title="${l.title || ''}">${l.text}</a>`
+        ).join('');
+
+        return `
+            <div class="card stagger-fade">
+                <span class="card-tag">${opts.tag}</span>
+                <h3 class="card-title">${opts.title}</h3>
+                <p class="card-desc">${opts.desc}</p>
+                <div class="card-actions">
+                    ${linksHtml}
+                    <button class="btn-icon" onclick="toggleNote('${opts.id}')" title="Notes">📝</button>
+                    <button class="btn-icon" onclick="showQuiz('${opts.tag}')" title="Quiz">💡</button>
+                    <div class="progress-checkbox ${isChecked ? 'checked' : ''}" onclick="toggleProgress('${opts.id}')"></div>
+                </div>
+                <textarea id="note-${opts.id}" class="note-area ${noteText ? 'visible' : ''}" 
+                    placeholder="Reflections on this topic..." 
+                    oninput="updateNote('${opts.id}', this.value)">${noteText}</textarea>
+            </div>
+        `;
     }
 
     navLinks.forEach(link => {
