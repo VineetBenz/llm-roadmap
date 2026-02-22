@@ -1,0 +1,11 @@
+Equation / Concept,Derived by Hand? (Yes/No),Confidence Level (1-5)
+Gradient of Cross Entropy Loss,,
+Softmax Derivative,,
+Backprop Through Linear Layer,,
+Backprop Through LayerNorm,,
+Self-Attention Gradient,,
+Multi-Head Attention Derivation,,
+Positional Encoding Formula,,
+Adam Optimizer Update Rule,,
+KL Divergence Derivation,,
+Scaling Law Power Function Fit,,

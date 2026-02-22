@@ -1,0 +1,5 @@
+Model Size (B params),Tokens (Billions),GPU Type,Hours Required,Cost per Hour ($),Estimated Total Cost ($)
+1B,100B,A100,,,
+7B,300B,A100,,,
+13B,500B,H100,,,
+70B,1000B,H100 Cluster,,,
